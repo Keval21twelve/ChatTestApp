@@ -1,7 +1,15 @@
 "use client";
 
 import { createContext, useReducer } from "react";
-export const GlobalContext = createContext({});
+export const GlobalContext = createContext({
+  state: {
+    currentUser: { id: "", name: "" },
+    isLoggedIn: false,
+    messages: [],
+    users: [],
+  },
+  dispatch: (data: unknown) => {},
+});
 
 export const ACTIONS = {
   LOGIN_USER: "login.user",
@@ -31,7 +39,7 @@ export interface IState {
 }
 export interface IAction {
   type: string;
-  payload: any;
+  payload: unknown;
 }
 
 const initialValues: IState = {
@@ -46,7 +54,7 @@ export default function GlobalContextWrapper({
 }: {
   children: React.ReactNode;
 }) {
-  const [state, dispatch] = useReducer<any>(reducer, initialValues);
+  const [state, dispatch] = useReducer<any>(reducer, initialValues) as any;
 
   return (
     <GlobalContext.Provider value={{ state, dispatch }}>
@@ -86,11 +94,17 @@ function reducer(state: IState, { type, payload }: IAction) {
   return state;
 }
 
-export function getLoginUserAction(data: any) {
+export function getLoginUserAction(data: unknown) {
   return { type: ACTIONS.LOGIN_USER, payload: data } as IAction;
 }
 
-export function sendMessageAction({ reciverId, message }: any) {
+export function sendMessageAction({
+  reciverId,
+  message,
+}: {
+  message: string;
+  reciverId: string;
+}) {
   return {
     type: ACTIONS.SEND_MESSAGE,
     payload: {
@@ -100,11 +114,11 @@ export function sendMessageAction({ reciverId, message }: any) {
   } as IAction;
 }
 
-export function saveOnlineUsers(data: Array<any>, socketId: string) {
+export function saveOnlineUsers(data: Array<{ id: string }>, socketId: string) {
   const array = data.filter((item) => item.id != socketId);
   return { type: ACTIONS.SAVE_ONLINE_USERS, payload: array || [] };
 }
 
-export function saveMessages(data: any) {
+export function saveMessages(data: unknown) {
   return { type: ACTIONS.SAVE_MESSAGES, payload: data || [] };
 }

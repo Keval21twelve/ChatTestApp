@@ -1,9 +1,8 @@
 import { io } from "socket.io-client";
 import { useState, useEffect, useCallback } from "react";
 
-const isProduction = process.env.NODE_ENV == "production";
-const SOCKET_URL = !isProduction ? "http://localhost:3001" : "";
-const SOCKET_CHANNEL = "common-chat-channel";
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL;
+const SOCKET_CHANNEL = process.env.NEXT_PUBLIC_SOCKET_CHANNEL;
 
 let socket;
 

@@ -3,7 +3,14 @@
 import { createContext } from "react";
 
 import useSocket from "@/hooks/useSocket";
-export const SocketContext = createContext({});
+export const SocketContext = createContext({
+  socketId: {},
+  socketState: {
+    type: "",
+    payload: "" || {} || [],
+  },
+  socketDispatch: (data: unknown) => {},
+});
 
 export const ACTIONS = {
   LOGIN_USER: "login",
@@ -24,17 +31,19 @@ export default function SocketContextWrapper({
 }) {
   const [socketState, socketDispatch, socketId] = useSocket();
 
+  const data = { socketState, socketDispatch, socketId };
+
   return (
-    <SocketContext.Provider value={{ socketState, socketDispatch, socketId }}>
+    <SocketContext.Provider value={data as any}>
       {children}
     </SocketContext.Provider>
   );
 }
 
-export function socketLoginUser(data: any) {
+export function socketLoginUser(data: unknown) {
   return { type: ACTIONS.LOGIN_USER, payload: data };
 }
 
-export function socketSendMessage(data: any) {
+export function socketSendMessage(data: unknown) {
   return { type: ACTIONS.SEND_MESSAGE, payload: data };
 }

@@ -11,19 +11,21 @@ import {
 
 import { useState, useContext, useEffect, useCallback } from "react";
 import {
-  Modal,
   Button,
+  Modal,
   Form,
   Input,
   Row,
   Col,
   List,
+  Alert,
   Empty,
   message,
 } from "antd";
 
 import {
   IUser,
+  IState,
   IMessage,
   GlobalContext,
   saveMessages,
@@ -45,8 +47,8 @@ export default function Home() {
 }
 
 function BeforeLoginScreen() {
-  const { socketDispatch, socketId } = useContext<any>(SocketContext);
-  const { state, dispatch } = useContext(GlobalContext) as any;
+  const { socketDispatch, socketId } = useContext(SocketContext);
+  const { state, dispatch } = useContext(GlobalContext);
   const [flag, setFlag] = useState(false);
 
   const handleLogin = useCallback(
@@ -56,7 +58,7 @@ function BeforeLoginScreen() {
       socketDispatch(socketLoginUser(data));
       message.success("You are logged in now");
     },
-    [dispatch, socketId]
+    [dispatch, socketId, socketDispatch]
   );
 
   useEffect(() => {
@@ -72,8 +74,8 @@ function BeforeLoginScreen() {
 }
 
 function AfterLoginScreen() {
-  const { state, dispatch } = useContext(GlobalContext) as any;
-  const { socketDispatch } = useContext<any>(SocketContext) as any;
+  const { state, dispatch } = useContext(GlobalContext);
+  const { socketDispatch } = useContext(SocketContext);
   const canUserIntreact = Boolean(state?.isLoggedIn);
   const userId = state.currentUser.id;
   const userName = state.currentUser.name;
@@ -106,77 +108,87 @@ function AfterLoginScreen() {
       dispatch(sendMessageAction(message));
       socketDispatch(socketSendMessage(message));
     },
-    [dispatch, reciverUser, userId]
+    [dispatch, reciverUser, userId, socketDispatch]
   );
 
   return (
-    <ChatScreen>
-      {/* row 1 */}
-      <StyledHeader>Users ({state?.users?.length})</StyledHeader>
-      <StyledHeader>
-        {isUserSelected && (
-          <>
-            <div className="name">{reciverUser?.name}</div>
-            <div className="cross">
-              <Button onClick={handleCloseChat} shape="circle">
-                &#10060;
-              </Button>
-            </div>
-          </>
-        )}
-      </StyledHeader>
-      {/* row 2 */}
-      <ChatItemContainer>
-        <List
-          size="large"
-          dataSource={state.users}
-          renderItem={(item: IUser) => (
-            <List.Item id={item.id} onClick={() => setReciverUser(item)}>
-              {item.name}
-              <sup>{reciverUser?.id == item.id && " (Selected)"}</sup>
-            </List.Item>
+    <>
+      {userId && (
+        <AlertBar>
+          Hello {userName}, You can start chatting now! Thank you for using this
+          app.
+        </AlertBar>
+      )}
+      <ChatScreen>
+        {/* row 1 */}
+        <StyledHeader>Users ({state?.users?.length})</StyledHeader>
+        <StyledHeader>
+          {isUserSelected && (
+            <>
+              <div className="name">{reciverUser?.name}</div>
+              <div className="cross">
+                <Button onClick={handleCloseChat} shape="circle">
+                  &#10060;
+                </Button>
+              </div>
+            </>
           )}
-        />
-      </ChatItemContainer>
-      <MessageScreen>
-        {isUserSelected && (
-          <>
-            <Messages>
-              {messages.map((item: IMessage) => {
-                const isSender = item.senderId == userId;
+        </StyledHeader>
+        {/* row 2 */}
+        <ChatItemContainer>
+          <List
+            size="large"
+            dataSource={state.users}
+            renderItem={(item: IUser) => (
+              <List.Item id={item.id} onClick={() => setReciverUser(item)}>
+                {item.name}
+                <sup>{reciverUser?.id == item.id && " (Selected)"}</sup>
+              </List.Item>
+            )}
+          />
+        </ChatItemContainer>
+        <MessageScreen>
+          {isUserSelected && (
+            <>
+              <Messages>
+                {messages.map((item: IMessage) => {
+                  const isSender = item.senderId == userId;
 
-                return (
-                  <div
-                    key={"message-" + item.id}
-                    style={{ textAlign: isSender ? "right" : "left" }}
-                  >
-                    <MessageBox>
-                      <label>{isSender ? userName : reciverUser?.name}</label>
-                      <p>{item.message}</p>
-                    </MessageBox>
-                  </div>
-                );
-              })}
-            </Messages>
-            {canUserIntreact && <ChatInput onSend={handleSendMessage} />}
-          </>
-        )}
-        {!isUserSelected && (
-          <div>
-            <EmptyUser>
-              <Empty description={"Please select a user to start the chat"} />
-            </EmptyUser>
-          </div>
-        )}
-      </MessageScreen>
-    </ChatScreen>
+                  return (
+                    <div
+                      key={"message-" + item.id}
+                      style={{ textAlign: isSender ? "right" : "left" }}
+                    >
+                      <MessageBox>
+                        <label>{isSender ? userName : reciverUser?.name}</label>
+                        <p>{item.message}</p>
+                      </MessageBox>
+                    </div>
+                  );
+                })}
+              </Messages>
+              {canUserIntreact && <ChatInput onSend={handleSendMessage} />}
+            </>
+          )}
+          {!isUserSelected && (
+            <div>
+              <EmptyUser>
+                <Empty description={"Please select a user to start the chat"} />
+              </EmptyUser>
+            </div>
+          )}
+        </MessageScreen>
+      </ChatScreen>
+    </>
   );
 }
 
 function LoginPopup({ open, onLogin }: { open: boolean; onLogin: Function }) {
-  const { state } = useContext(GlobalContext) as any;
+  const { state } = useContext(GlobalContext);
 
   const [form] = Form.useForm();
+
+  const [waiting, setWaiting] = useState(true);
 
   function isUsernameAvailable(userName: string) {
     const users = state.users;
@@ -202,6 +214,12 @@ function LoginPopup({ open, onLogin }: { open: boolean; onLogin: Function }) {
     }
   }
 
+  useEffect(() => {
+    setTimeout(() => {
+      setWaiting(false);
+    }, 3000);
+  }, [setWaiting]);
+
   return (
     <Modal open={open} footer={null} title={"Login"} closable={false}>
       <br />
@@ -222,7 +240,7 @@ function LoginPopup({ open, onLogin }: { open: boolean; onLogin: Function }) {
         <br />
         <Row justify={"end"}>
           <Col>
-            <Button type="primary" htmlType="submit">
+            <Button disabled={waiting} type="primary" htmlType="submit">
               Login
             </Button>
           </Col>
@@ -256,8 +274,8 @@ function ChatInput({ onSend }: { onSend: Function }) {
 }
 
 function ConnectSocket() {
-  const { dispatch } = useContext<any>(GlobalContext);
-  const { socketState, socketId } = useContext<any>(SocketContext);
+  const { dispatch } = useContext(GlobalContext);
+  const { socketState, socketId } = useContext(SocketContext);
 
   useEffect(() => {
     if (socketState) {
@@ -265,7 +283,12 @@ function ConnectSocket() {
 
       switch (type) {
         case ACTIONS.ONLINE_USERS:
-          dispatch(saveOnlineUsers(payload, socketId));
+          dispatch(
+            saveOnlineUsers(
+              payload as Array<{ id: string }>,
+              socketId as string
+            )
+          );
           break;
 
         case ACTIONS.RECEIVE_MESSAGE:
@@ -273,10 +296,18 @@ function ConnectSocket() {
           break;
       }
     }
-  }, [socketState]);
+  }, [socketState, dispatch, socketId]);
 
   return <></>;
 }
+
+const AlertBar = styled.div`
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  background-color: #fffbe6;
+`;
 
 const ChatItemContainer = styled.div`
   height: calc(100vh - 70px);
@@ -341,8 +372,8 @@ const InputContainer = styled.div`
 
 const ChatScreen = styled.div`
   display: grid;
-  height: 100vh;
   overflow: hidden;
+  height: calc(100vh - 32px);
   grid-template-rows: 62px 1fr;
   grid-template-columns: 400px 1fr;
 `;
@@ -351,7 +382,7 @@ const MessageScreen = styled.div`
   display: flex;
   position: relative;
   flex-direction: column;
-  height: calc(100vh - 70px);
+  height: calc(100vh - 70px - 30px);
   border: 1px solid rgba(5, 5, 5, 0.06);
   background-image: url(${ChatBgImage.src});
 `;
