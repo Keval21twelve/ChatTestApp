@@ -2,7 +2,12 @@
 
 import styled from "styled-components";
 
-import useSocket from "@/hooks/useSocket";
+import {
+  ACTIONS,
+  SocketContext,
+  socketLoginUser,
+  socketSendMessage,
+} from "@/contexts/SocketContext";
 
 import { useState, useContext, useEffect, useCallback } from "react";
 import {
@@ -21,6 +26,8 @@ import {
   IUser,
   IMessage,
   GlobalContext,
+  saveMessages,
+  saveOnlineUsers,
   sendMessageAction,
   getLoginUserAction,
 } from "@/contexts/GlobalContext";
@@ -38,15 +45,18 @@ export default function Home() {
 }
 
 function BeforeLoginScreen() {
+  const { socketDispatch, socketId } = useContext<any>(SocketContext);
   const { state, dispatch } = useContext(GlobalContext) as any;
   const [flag, setFlag] = useState(false);
 
   const handleLogin = useCallback(
     (name: string) => {
-      dispatch(getLoginUserAction(name));
+      const data = { id: socketId, name };
+      dispatch(getLoginUserAction(data));
+      socketDispatch(socketLoginUser(data));
       message.success("You are logged in now");
     },
-    [dispatch]
+    [dispatch, socketId]
   );
 
   useEffect(() => {
@@ -63,6 +73,7 @@ function BeforeLoginScreen() {
 
 function AfterLoginScreen() {
   const { state, dispatch } = useContext(GlobalContext) as any;
+  const { socketDispatch } = useContext<any>(SocketContext) as any;
   const canUserIntreact = Boolean(state?.isLoggedIn);
   const userId = state.currentUser.id;
   const userName = state.currentUser.name;
@@ -74,33 +85,38 @@ function AfterLoginScreen() {
   }, []);
 
   const messages = state.messages
-    .filter(({ reciverId, senderId }: IMessage) =>
-      [reciverId, senderId].includes(userId)
-    )
+    .filter(({ reciverId, senderId }: IMessage) => {
+      const condition1 = reciverId == userId && senderId == reciverUser?.id;
+      const condition2 = senderId == userId && reciverId == reciverUser?.id;
+
+      if (condition1 || condition2) return true;
+    })
     .sort((a: IMessage, b: IMessage) => a.timeStamp - b.timeStamp);
 
   const isUserSelected = Boolean(reciverUser);
 
   const handleSendMessage = useCallback(
     (text: string) => {
-      dispatch(
-        sendMessageAction({
-          message: text,
-          reciverId: reciverUser?.id as string,
-        })
-      );
+      const message = {
+        message: text,
+        senderId: userId,
+        timeStamp: new Date().toISOString(),
+        reciverId: reciverUser?.id as string,
+      };
+      dispatch(sendMessageAction(message));
+      socketDispatch(socketSendMessage(message));
     },
-    [dispatch, reciverUser]
+    [dispatch, reciverUser, userId]
   );
 
   return (
     <ChatScreen>
       {/* row 1 */}
-      <StyledHeader>Messages</StyledHeader>
+      <StyledHeader>Users ({state?.users?.length})</StyledHeader>
       <StyledHeader>
         {isUserSelected && (
           <>
-            <div>{reciverUser?.name}</div>
+            <div className="name">{reciverUser?.name}</div>
             <div className="cross">
               <Button onClick={handleCloseChat} shape="circle">
                 &#10060;
@@ -115,8 +131,9 @@ function AfterLoginScreen() {
           size="large"
           dataSource={state.users}
           renderItem={(item: IUser) => (
-            <List.Item onClick={() => setReciverUser(item)}>
+            <List.Item id={item.id} onClick={() => setReciverUser(item)}>
               {item.name}
+              <sup>{reciverUser?.id == item.id && " (Selected)"}</sup>
             </List.Item>
           )}
         />
@@ -125,11 +142,12 @@ function AfterLoginScreen() {
         {isUserSelected && (
           <>
             <Messages>
-              {messages.map((item: IMessage, index: number) => {
+              {messages.map((item: IMessage) => {
                 const isSender = item.senderId == userId;
+
                 return (
                   <div
-                    key={"message-" + index}
+                    key={"message-" + item.id}
                     style={{ textAlign: isSender ? "right" : "left" }}
                   >
                     <MessageBox>
@@ -156,7 +174,7 @@ function AfterLoginScreen() {
 }
 
 function LoginPopup({ open, onLogin }: { open: boolean; onLogin: Function }) {
-  const { state, dispatch } = useContext(GlobalContext) as any;
+  const { state } = useContext(GlobalContext) as any;
 
   const [form] = Form.useForm();
 
@@ -238,7 +256,24 @@ function ChatInput({ onSend }: { onSend: Function }) {
 }
 
 function ConnectSocket() {
-  const {} = useSocket();
+  const { dispatch } = useContext<any>(GlobalContext);
+  const { socketState, socketId } = useContext<any>(SocketContext);
+
+  useEffect(() => {
+    if (socketState) {
+      const { type, payload } = socketState || {};
+
+      switch (type) {
+        case ACTIONS.ONLINE_USERS:
+          dispatch(saveOnlineUsers(payload, socketId));
+          break;
+
+        case ACTIONS.RECEIVE_MESSAGE:
+          dispatch(saveMessages(payload));
+          break;
+      }
+    }
+  }, [socketState]);
 
   return <></>;
 }
@@ -246,6 +281,10 @@ function ConnectSocket() {
 const ChatItemContainer = styled.div`
   height: calc(100vh - 70px);
   overflow-y: auto;
+
+  & .ant-list-item {
+    font-weight: 500;
+  }
 `;
 
 const EmptyUser = styled.div`
@@ -328,6 +367,10 @@ const StyledHeader = styled.div`
   align-items: center;
   justify-content: center;
   background-color: #4096ff;
+
+  & .name {
+    font-weight: bold;
+  }
 
   & .cross {
     right: 16px;

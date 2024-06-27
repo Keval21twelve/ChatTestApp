@@ -6,6 +6,8 @@ export const GlobalContext = createContext({});
 export const ACTIONS = {
   LOGIN_USER: "login.user",
   SEND_MESSAGE: "send.message",
+  SAVE_MESSAGES: "save.messages",
+  SAVE_ONLINE_USERS: "save.online.users",
 };
 
 export interface IUser {
@@ -36,16 +38,7 @@ const initialValues: IState = {
   currentUser: { id: "", name: "" },
   isLoggedIn: false,
   messages: [],
-  users: [
-    {
-      id: "1",
-      name: "one",
-    },
-    {
-      id: "2",
-      name: "two",
-    },
-  ],
+  users: [],
 };
 
 export default function GlobalContextWrapper({
@@ -67,40 +60,37 @@ function reducer(state: IState, { type, payload }: IAction) {
     case ACTIONS.LOGIN_USER:
       return {
         ...state,
-        currentUser: { id: "", name: payload },
+        currentUser: payload,
         isLoggedIn: Boolean(payload),
       };
 
     case ACTIONS.SEND_MESSAGE:
       return {
         ...state,
-        messages: [
-          ...state.messages,
-          {
-            id: new Date().getTime(),
-            message: payload.message,
-            reciverId: payload.reciverId,
-            senderId: state.currentUser.id,
-            timeStamp: new Date().getTime(),
-          },
-        ],
+        messages: [...state.messages, payload],
+      };
+
+    case ACTIONS.SAVE_ONLINE_USERS:
+      return {
+        ...state,
+        users: payload,
+      };
+
+    case ACTIONS.SAVE_MESSAGES:
+      return {
+        ...state,
+        messages: payload,
       };
   }
 
   return state;
 }
 
-export function getLoginUserAction(name: string) {
-  return { type: ACTIONS.LOGIN_USER, payload: name } as IAction;
+export function getLoginUserAction(data: any) {
+  return { type: ACTIONS.LOGIN_USER, payload: data } as IAction;
 }
 
-export function sendMessageAction({
-  reciverId,
-  message,
-}: {
-  reciverId: string;
-  message: string;
-}) {
+export function sendMessageAction({ reciverId, message }: any) {
   return {
     type: ACTIONS.SEND_MESSAGE,
     payload: {
@@ -108,4 +98,13 @@ export function sendMessageAction({
       message,
     },
   } as IAction;
+}
+
+export function saveOnlineUsers(data: Array<any>, socketId: string) {
+  const array = data.filter((item) => item.id != socketId);
+  return { type: ACTIONS.SAVE_ONLINE_USERS, payload: array || [] };
+}
+
+export function saveMessages(data: any) {
+  return { type: ACTIONS.SAVE_MESSAGES, payload: data || [] };
 }

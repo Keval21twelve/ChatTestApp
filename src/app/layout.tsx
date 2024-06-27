@@ -4,6 +4,7 @@ import "./global.css";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 
 import GlobalContextWrapper from "@/contexts/GlobalContext";
+import SocketContextWrapper from "@/contexts/SocketContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,7 +22,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AntdRegistry>
-          <GlobalContextWrapper>{children}</GlobalContextWrapper>
+          <GlobalContextWrapper>
+            <SocketContextWrapper>{children}</SocketContextWrapper>
+          </GlobalContextWrapper>
         </AntdRegistry>
       </body>
     </html>
